@@ -2,6 +2,7 @@ require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
 require 'time'
+require 'json'
 
 def clean_zipcode(zip_code)
   zip_code.to_s.rjust(5, '0')[0, 5]
@@ -50,22 +51,29 @@ def time_target(time_str)
   time
 end
 
-def print_dates(dates)
-  dates.each do |key, value|
-    puts "Hour: #{key} -> #{'#' * value}"
+def handle_hours(hours, save = false)
+  if save
+    json = JSON.dump(hours)
+    Dir.mkdir('output') unless Dir.exist?('output')
+    File.open('output/hours.json', 'w') { |file| file.puts json }
+    puts 'Hours saved!'
+  else
+    hours.each do |key, value|
+      puts "Hour: #{key} -> #{'#' * value}"
+    end
   end
 end
 
 def main
   contents = CSV.open('ss.csv', headers: true, header_converters: :symbol)
-  dates = Hash.new(0)
+  hours = Hash.new(0)
 
   contents.each do |row|
     name = row[:first_name]
     time = time_target(row[:regdate])
-    dates[time.hour] += 1
+    hours[time.hour] += 1
   end
-  print_dates dates
+  handle_hours hours, true
 end
 
 main
