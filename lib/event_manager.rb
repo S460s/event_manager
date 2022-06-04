@@ -1,6 +1,7 @@
 require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
+require 'time'
 
 def clean_zipcode(zip_code)
   zip_code.to_s.rjust(5, '0')[0, 5]
@@ -28,16 +29,43 @@ def save_letter(id, letter)
   File.open(filename, 'w') { |file| file.puts letter }
 end
 
-contents = CSV.open('../ss.csv', headers: true, header_converters: :symbol)
-template_letter = File.read('../letter.erb')
-erb_template = ERB.new template_letter
+def process_legislators
+  template_letter = File.read('letter.erb')
+  erb_template = ERB.new template_letter
 
-contents.each do |row|
   id = row[0]
-  name = row[:first_name]
   zipcode = clean_zipcode(row[:zipcode])
   legislators = legislators_by_zipcode(zipcode)
 
   form_letter = erb_template.result(binding)
   save_letter(id, form_letter)
 end
+
+def time_target(time_str)
+  begin
+    time = Time.strptime(time_str, '%m/%d/%y %H:%M')
+  rescue StandardError
+    puts 'error '
+  end
+  time
+end
+
+def print_dates(dates)
+  dates.each do |key, value|
+    puts "Hour: #{key} -> #{'#' * value}"
+  end
+end
+
+def main
+  contents = CSV.open('ss.csv', headers: true, header_converters: :symbol)
+  dates = Hash.new(0)
+
+  contents.each do |row|
+    name = row[:first_name]
+    time = time_target(row[:regdate])
+    dates[time.hour] += 1
+  end
+  print_dates dates
+end
+
+main
